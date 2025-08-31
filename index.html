@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A*寻路算法可视化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(90deg, #2c3e50, #4ca1af);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 20px;
+        }
+        
+        .grid-container {
+            flex: 1;
+            min-width: 300px;
+            padding: 15px;
+        }
+        
+        #gridCanvas {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .controls {
+            flex: 0 0 300px;
+            padding: 20px;
+            background-color: #f1f3f5;
+            border-radius: 10px;
+            margin-left: 20px;
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            border-bottom: 2px solid #4ca1af;
+            padding-bottom: 5px;
+        }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            background: linear-gradient(90deg, #4ca1af, #2c3e50);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            background: linear-gradient(90deg, #cccccc, #999999);
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .slider-container {
+            margin: 15px 0;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            background: #ddd;
+            border-radius: 5px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4ca1af;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #2c3e50;
+        }
+        
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        
+        .color-box {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border: 1px solid #aaa;
+            border-radius: 3px;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .status h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            background-color: #2c3e50;
+            color: white;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .controls {
+                margin-left: 0;
+                margin-top: 20px;
+            }
+            
+            #gridCanvas {
+                width: 100%;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>A*寻路算法可视化</h1>
+            <p class="subtitle">使用A*算法在网格中寻找从起点到终点的最短路径</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="grid-container">
+                <canvas id="gridCanvas" width="600" height="600"></canvas>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <h2>控制面板</h2>
+                    <button id="generateBtn" class="btn">生成新地图</button>
+                    <button id="findPathBtn" class="btn">开始寻路</button>
+                    <button id="resetBtn" class="btn">重置寻路</button>
+                </div>
+                
+                <div class="control-group">
+                    <h2>参数设置</h2>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>网格大小: </span>
+                            <span id="gridSizeValue">30x30</span>
+                        </div>
+                        <input type="range" id="gridSizeSlider" min="10" max="50" value="30">
+                    </div>
+                    
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>障碍物密度: </span>
+                            <span id="obstacleDensityValue">20%</span>
+                        </div>
+                        <input type="range" id="obstacleDensitySlider" min="5" max="40" value="20">
+                    </div>
+                    
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>动画速度: </span>
+                            <span id="animationSpeedValue">中速</span>
+                        </div>
+                        <input type="range" id="animationSpeedSlider" min="1" max="10" value="5">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h2>图例说明</h2>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="color-box" style="background-color: #3498db;"></div>
+                            <span>起点</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="color-box" style="background-color: #e74c3c;"></div>
+                            <span>终点</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="color-box" style="background-color: #2ecc71;"></div>
+                            <span>路径</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="color-box" style="background-color: #2c3e50;"></div>
+                            <span>障碍物</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="color-box" style="background-color: #00cec9;"></div>
+                            <span>开放列表</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="color-box" style="background-color: #f39c12;"></div>
+                            <span>关闭列表</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="status">
+                    <h3>状态信息</h3>
+                    <p id="statusText">就绪，等待操作...</p>
+                    <p id="pathLength">路径长度: -</p>
+                    <p id="nodesVisited">已访问节点: 0</p>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>A*寻路算法可视化 | 使用HTML5 Canvas和JavaScript实现 | 部署在GitHub Pages</p>
+        </footer>
+    </div>
+
+    <script>
+        // 配置常量
+        const GRID_SIZE = 30;
+        const CELL_SIZE = 20;
+        const OBSTACLE_PROBABILITY = 0.2;
+        
+        // 颜色定义
+        const COLORS = {
+            START: '#3498db',      // 蓝色 - 起点
+            END: '#e74c3c',        // 红色 - 终点
+            PATH: '#2ecc71',       // 绿色 - 路径
+            OBSTACLE: '#2c3e50',   // 黑色 - 障碍物
+            OPEN: '#00cec9',       // 青色 - 开放列表
+            CLOSED: '#f39c12',     // 橙色 - 关闭列表
+            DEFAULT: '#ecf0f1',    // 白色 - 默认
+            GRID_LINE: '#bdc3c7'   // 灰色 - 网格线
+        };
+        
+        // 节点类
+        class Node {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.f = 0;
+                this.g = 0;
+                this.h = 0;
+                this.isObstacle = false;
+                this.isPath = false;
+                this.isOpen = false;
+                this.isClosed = false;
+                this.parent = null;
+            }
+            
+            equals(other) {
+                return this.x === other.x && this.y === other.y;
+            }
+        }
+        
+        // A*算法可视化应用
+        class AStarVisualization {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.gridSize = GRID_SIZE;
+                this.cellSize = CELL_SIZE;
+                this.obstacleProbability = OBSTACLE_PROBABILITY;
+                this.animationSpeed = 5;
+                this.isRunning = false;
+                this.nodesVisited = 0;
+                
+                this.grid = [];
+                this.startNode = null;
+                this.endNode = null;
+                
+                this.init();
+                this.setupEventListeners();
+            }
+            
+            init() {
+                this.canvas.width = this.gridSize * this.cellSize;
+                this.canvas.height = this.gridSize * this.cellSize;
+                this.generateGrid();
+                this.drawGrid();
+            }
+            
+            generateGrid() {
+                // 创建网格
+                this.grid = [];
+                for (let x = 0; x < this.gridSize; x++) {
+                    this.grid[x] = [];
+                    for (let y = 0; y < this.gridSize; y++) {
+                        this.grid[x][y] = new Node(x, y);
+                    }
+                }
+                
+                // 随机生成障碍物
+                for (let x = 0; x < this.gridSize; x++) {
+                    for (let y = 0; y < this.gridSize; y++) {
+                        if (Math.random() < this.obstacleProbability) {
+                            this.grid[x][y].isObstacle = true;
+                        }
+                    }
+                }
+                
+                // 设置起点和终点
+                this.startNode = this.grid[0][0];
+                this.startNode.isObstacle = false;
+                
+                // 确保终点不是起点且不是障碍物
+                let endX, endY;
+                do {
+                    endX = Math.floor(Math.random() * this.gridSize);
+                    endY = Math.floor(Math.random() * this.gridSize);
+                } while ((endX === 0 && endY === 0) || this.grid[endX][endY].isObstacle);
+                
+                this.endNode = this.grid[endX][endY];
+                
+                this.updateStatus("新地图已生成");
+                this.nodesVisited = 0;
+                document.getElementById('nodesVisited').textContent = `已访问节点: ${this.nodesVisited}`;
+                document.getElementById('pathLength').textContent = `路径长度: -`;
+            }
+            
+            drawGrid() {
+                // 清除画布
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 绘制每个单元格
+                for (let x = 0; x < this.gridSize; x++) {
+                    for (let y = 0; y < this.gridSize; y++) {
+                        const node = this.grid[x][y];
+                        let color;
+                        
+                        if (node.isPath) {
+                            color = COLORS.PATH;
+                        } else if (node.equals(this.startNode)) {
+                            color = COLORS.START;
+                        } else if (node.equals(this.endNode)) {
+                            color = COLORS.END;
+                        } else if (node.isObstacle) {
+                            color = COLORS.OBSTACLE;
+                        } else if (node.isOpen) {
+                            color = COLORS.OPEN;
+                        } else if (node.isClosed) {
+                            color = COLORS.CLOSED;
+                        } else {
+                            color = COLORS.DEFAULT;
+                        }
+                        
+                        // 绘制单元格
+                        this.ctx.fillStyle = color;
+                        this.ctx.fillRect(
+                            x * this.cellSize, 
+                            y * this.cellSize, 
+                            this.cellSize, 
+                            this.cellSize
+                        );
+                        
+                        // 绘制网格线
+                        this.ctx.strokeStyle = COLORS.GRID_LINE;
+                        this.ctx.strokeRect(
+                            x * this.cellSize, 
+                            y * this.cellSize, 
+                            this.cellSize, 
+                            this.cellSize
+                        );
+                    }
+                }
+            }
+            
+            async findPath() {
+                if (this.isRunning) {
+                    this.updateStatus("寻路正在进行中，请稍候");
+                    return;
+                }
+                
+                this.isRunning = true;
+                this.updateStatus("寻路中...");
+                
+                // 重置所有节点状态（保留障碍物和起点终点）
+                for (let x = 0; x < this.gridSize; x++) {
+                    for (let y = 0; y < this.gridSize; y++) {
+                        const node = this.grid[x][y];
+                        if (!node.isObstacle && !node.equals(this.startNode) && !node.equals(this.endNode)) {
+                            node.f = 0;
+                            node.g = 0;
+                            node.h = 0;
+                            node.isPath = false;
+                            node.isOpen = false;
+                            node.isClosed = false;
+                            node.parent = null;
+                        }
+                    }
+                }
+                
+                this.drawGrid();
+                
+                // 初始化开放列表和关闭列表
+                const openList = [];
+                const closedList = [];
+                
+                // 将起点加入开放列表
+                this.startNode.g = 0;
+                this.startNode.h = this.heuristic(this.startNode, this.endNode);
+                this.startNode.f = this.startNode.g + this.startNode.h;
+                openList.push(this.startNode);
+                this.startNode.isOpen = true;
+                
+                this.nodesVisited = 0;
+                
+                // A*算法主循环
+                while (openList.length > 0) {
+                    // 获取f值最小的节点
+                    let currentNode = openList[0];
+                    let currentIndex = 0;
+                    
+                    for (let i = 1; i < openList.length; i++) {
+                        if (openList[i].f < currentNode.f) {
+                            currentNode = openList[i];
+                            currentIndex = i;
+                        }
+                    }
+                    
+                    // 将当前节点从开放列表移到关闭列表
+                    openList.splice(currentIndex, 1);
+                    currentNode.isOpen = false;
+                    closedList.push(currentNode);
+                    currentNode.isClosed = true;
+                    this.nodesVisited++;
+                    
+                    // 如果到达终点
+                    if (currentNode.equals(this.endNode)) {
+                        // 回溯路径
+                        let current = currentNode;
+                        let pathLength = 0;
+                        while (current !== null) {
+                            if (!current.equals(this.startNode) && !current.equals(this.endNode)) {
+                                current.isPath = true;
+                                pathLength++;
+                            }
+                            current = current.parent;
+                            this.drawGrid();
+                            await this.delay(100 / this.animationSpeed);
+                        }
+                        
+                        document.getElementById('pathLength').textContent = `路径长度: ${pathLength}`;
+                        document.getElementById('nodesVisited').textContent = `已访问节点: ${this.nodesVisited}`;
+                        this.updateStatus("路径查找完成！");
+                        this.isRunning = false;
+                        return;
+                    }
+                    
+                    // 检查所有相邻节点
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            if (dx === 0 && dy === 0) continue; // 跳过自身
+                            
+                            const newX = currentNode.x + dx;
+                            const newY = currentNode.y + dy;
+                            
+                            // 检查边界
+                            if (newX < 0 || newX >= this.gridSize || newY < 0 || newY >= this.gridSize) {
+                                continue;
+                            }
+                            
+                            const neighbor = this.grid[newX][newY];
+                            
+                            // 跳过障碍物和已关闭的节点
+                            if (neighbor.isObstacle || closedList.includes(neighbor)) {
+                                continue;
+                            }
+                            
+                            // 计算g值（对角线移动成本更高）
+                            const newG = currentNode.g + (Math.abs(dx) + Math.abs(dy) === 2 ? 14 : 10);
+                            
+                            // 如果新路径到邻居更短，或者邻居不在开放列表中
+                            if (newG < neighbor.g || !openList.includes(neighbor)) {
+                                // 计算h值（曼哈顿距离）
+                                neighbor.h = this.heuristic(neighbor, this.endNode);
+                                neighbor.g = newG;
+                                neighbor.f = neighbor.g + neighbor.h;
+                                neighbor.parent = currentNode;
+                                
+                                if (!openList.includes(neighbor)) {
+                                    openList.push(neighbor);
+                                    neighbor.isOpen = true;
+                                }
+                            }
+                        }
+                    }
+                    
+                    this.drawGrid();
+                    document.getElementById('nodesVisited').textContent = `已访问节点: ${this.nodesVisited}`;
+                    await this.delay(100 / this.animationSpeed);
+                }
+                
+                // 如果没有找到路径
+                this.updateStatus("找不到路径!");
+                this.isRunning = false;
+            }
+            
+            heuristic(nodeA, nodeB) {
+                // 使用曼哈顿距离作为启发式函数
+                return Math.abs(nodeA.x - nodeB.x) * 10 + Math.abs(nodeA.y - nodeB.y) * 10;
+            }
+            
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
+            updateStatus(message) {
+                document.getElementById('statusText').textContent = message;
+            }
+            
+            setupEventListeners() {
+                document.getElementById('generateBtn').addEventListener('click', () => {
+                    this.generateGrid();
+                    this.drawGrid();
+                });
+                
+                document.getElementById('findPathBtn').addEventListener('click', () => {
+                    this.findPath();
+                });
+                
+                document.getElementById('resetBtn').addEventListener('click', () => {
+                    // 重置所有节点状态（保留障碍物和起点终点）
+                    for (let x = 0; x < this.gridSize; x++) {
+                        for (let y = 0; y < this.gridSize; y++) {
+                            const node = this.grid[x][y];
+                            if (!node.isObstacle && !node.equals(this.startNode) && !node.equals(this.endNode)) {
+                                node.f = 0;
+                                node.g = 0;
+                                node.h = 0;
+                                node.isPath = false;
+                                node.isOpen = false;
+                                node.isClosed = false;
+                                node.parent = null;
+                            }
+                        }
+                    }
+                    
+                    this.drawGrid();
+                    this.updateStatus("已重置寻路");
+                    this.nodesVisited = 0;
+                    document.getElementById('nodesVisited').textContent = `已访问节点: ${this.nodesVisited}`;
+                    document.getElementById('pathLength').textContent = `路径长度: -`;
+                    this.isRunning = false;
+                });
+                
+                // 网格大小滑块
+                const gridSizeSlider = document.getElementById('gridSizeSlider');
+                const gridSizeValue = document.getElementById('gridSizeValue');
+                
+                gridSizeSlider.addEventListener('input', () => {
+                    this.gridSize = parseInt(gridSizeSlider.value);
+                    gridSizeValue.textContent = `${this.gridSize}x${this.gridSize}`;
+                    this.init();
+                });
+                
+                // 障碍物密度滑块
+                const obstacleDensitySlider = document.getElementById('obstacleDensitySlider');
+                const obstacleDensityValue = document.getElementById('obstacleDensityValue');
+                
+                obstacleDensitySlider.addEventListener('input', () => {
+                    this.obstacleProbability = parseInt(obstacleDensitySlider.value) / 100;
+                    obstacleDensityValue.textContent = `${obstacleDensitySlider.value}%`;
+                });
+                
+                // 动画速度滑块
+                const animationSpeedSlider = document.getElementById('animationSpeedSlider');
+                const animationSpeedValue = document.getElementById('animationSpeedValue');
+                
+                animationSpeedSlider.addEventListener('input', () => {
+                    this.animationSpeed = parseInt(animationSpeedSlider.value);
+                    const speedText = ['极慢', '很慢', '慢', '较慢', '中速', '较快', '快', '很快', '极快', '超快'];
+                    animationSpeedValue.textContent = speedText[this.animationSpeed - 1] || '中速';
+                });
+            }
+        }
+        
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = new AStarVisualization('gridCanvas');
+        });
+    </script>
+</body>
+</html>
